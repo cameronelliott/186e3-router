@@ -5,19 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-
 	"math/rand"
 	"net/http"
 	"net/url"
-
 	"sync"
 	"time"
 	"unicode/utf8"
 
+	"github.com/caddyserver/certmagic"
+	glog "github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-
-	glog "github.com/golang/glog"
 )
 
 var upgrader = websocket.Upgrader{CheckOrigin: checkSameOrigin}
@@ -305,7 +303,7 @@ func main() {
 	//glog.Info()  only goes to file
 	//glog.Warn or higher to go both file, stderr
 	//
-	flag.Lookup("log_dir").Value.Set(".")
+	flag.Lookup("log_dir").Value.Set("logs")
 	//careful these interact! flag.Lookup("alsologtostderr").Value.Set("true")
 	flag.Lookup("stderrthreshold").Value.Set("WARNING")
 	flag.Lookup("v").Value.Set("2")
@@ -313,16 +311,28 @@ func main() {
 	// glog.Info("stderr and file!")
 	glog.V(1).Info("glog-v(1)") // to file only, not stderr
 	glog.Info("glog-info")      // to file only, not stderr
-	glog.Warning("glog-warn")	// >=WARN to file AND stderr
+	glog.Warning("glog-warn")   // >=WARN to file AND stderr
 	glog.Flush()
-
-
 
 	go messageHandler()
 
 	r := mux.NewRouter()
+
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { http.ServeFile(w, r, "index.html") })
 	r.HandleFunc("/{clientServer}/{channel}", wsHandler).Methods("GET")
-	http.Handle("/", r)
-	panic(http.ListenAndServe(":9999", nil))
+
+	//port := "9999"
+
+	//http.Handle("/", r)
+
+	//domain:="example.com"
+
+	//if domain == nil
+	//panic(http.ListenAndServe(":"+port, nil))
+
+	// encrypted HTTPS with HTTP->HTTPS redirects - yay! 🔒😍
+	err := certmagic.HTTPS([]string{"kego.com"}, r)
+
+	glog.Error(err)
 
 }
